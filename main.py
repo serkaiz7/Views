@@ -54,16 +54,9 @@ def stop():
     print("Bot stopped.")
 
 def get_proxy():
-    url = 'https://free-proxy-list.net/'
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    proxy_list = []
-    for row in soup.find("table", {"id": "proxylisttable"}).find_all("tr")[1:]:
-        columns = row.find_all("td")
-        if columns[4].text.strip() == "elite proxy" and columns[6].text.strip() == "yes":
-            proxy = f"{columns[0].text.strip()}:{columns[1].text.strip()}"
-            proxy_list.append(proxy)
-    return random.choice(proxy_list)
+    r = requests.get('https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=1000&country=all')
+    proxies = r.content.decode().split('\r\n')
+    return random.choice(proxies)
 
 def menu():
     global url
