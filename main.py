@@ -28,6 +28,7 @@ def run():
             end_time = time.time()
             attempts.append((end_time, proxy, f'Error: {e}'))
             print(f"Error with proxy {proxy}: {e}")
+            time.sleep(random.randint(15, 30)) # To prevent immediate retry with the same proxy
             pass
 
 def start():
@@ -56,6 +57,7 @@ def stop():
 def get_proxy():
     r = requests.get('https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=1000&country=all')
     proxies = r.content.decode().split('\r\n')
+    proxies = [proxy for proxy in proxies if proxy] # Remove empty entries
     return random.choice(proxies)
 
 def menu():
