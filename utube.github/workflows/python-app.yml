@@ -21,4 +21,4 @@ jobs:
         pip install requests
 
     - name: Run the script
-      run: python3 main.py
+      run: python main.py
