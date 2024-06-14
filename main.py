@@ -2,6 +2,7 @@ import requests
 import threading
 import time
 import random
+from bs4 import BeautifulSoup
 
 url = None
 running = False
@@ -17,7 +18,8 @@ def run():
             }
             requests.get(url, proxies={"http": proxy, "https": proxy}, headers=headers, timeout=5)
             time.sleep(random.randint(15, 30))
-        except:
+        except Exception as e:
+            print(f"Error: {e}")
             pass
 
 def start():
@@ -44,9 +46,16 @@ def stop():
     print("Bot stopped.")
 
 def get_proxy():
-    r = requests.get('https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=1000&country=all')
-    proxies = r.content.decode().split('\r\n')
-    return random.choice(proxies)
+    url = 'https://free-proxy-list.net/'
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    proxy_list = []
+    for row in soup.find("table", {"id": "proxylisttable"}).find_all("tr")[1:]:
+        columns = row.find_all("td")
+        if columns[4].text.strip() == "elite proxy" and columns[6].text.strip() == "yes":
+            proxy = f"{columns[0].text.strip()}:{columns[1].text.strip()}"
+            proxy_list.append(proxy)
+    return random.choice(proxy_list)
 
 def menu():
     global url
