@@ -2,6 +2,7 @@ import requests
 import threading
 import time
 import random
+import curses
 from bs4 import BeautifulSoup
 
 url = None
@@ -9,8 +10,10 @@ running = False
 t = None
 attempts = []
 
-def run():
+def run(stdscr):
     global running
+    stdscr.clear()
+    stdscr.nodelay(1)  # Make getch() non-blocking
     while running:
         try:
             proxy = get_proxy()
@@ -22,75 +25,95 @@ def run():
             status = 'Success' if response.status_code == 200 else 'Failed'
             end_time = time.time()
             attempts.append((end_time, proxy, status))
-            print(f"Using proxy {proxy}. Response code: {response.status_code}")
+            update_display(stdscr, f"Using proxy {proxy}. Response code: {response.status_code}")
             time.sleep(random.randint(15, 30))
         except Exception as e:
             end_time = time.time()
             attempts.append((end_time, proxy, f'Error: {e}'))
-            print(f"Error with proxy {proxy}: {e}")
-            time.sleep(random.randint(15, 30)) # To prevent immediate retry with the same proxy
+            update_display(stdscr, f"Error with proxy {proxy}: {e}")
+            time.sleep(random.randint(15, 30))  # To prevent immediate retry with the same proxy
             pass
 
-def start():
+def start(stdscr):
     global t
     global running
     if not url:
-        print("Error: Please set a video URL first.")
+        update_display(stdscr, "Error: Please set a video URL first.")
         return
     if running:
-        print("Bot is already running.")
+        update_display(stdscr, "Bot is already running.")
         return
     running = True
-    t = threading.Thread(target=run)
+    t = threading.Thread(target=run, args=(stdscr,))
     t.start()
-    print("Bot started.")
+    update_display(stdscr, "Bot started.")
 
-def stop():
+def stop(stdscr):
     global running
     if not running:
-        print("Bot is not running.")
+        update_display(stdscr, "Bot is not running.")
         return
     running = False
     t.join()
-    print("Bot stopped.")
+    update_display(stdscr, "Bot stopped.")
 
 def get_proxy():
     r = requests.get('https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=1000&country=all')
     proxies = r.content.decode().split('\r\n')
-    proxies = [proxy for proxy in proxies if proxy] # Remove empty entries
+    proxies = [proxy for proxy in proxies if proxy]  # Remove empty entries
     return random.choice(proxies)
 
-def menu():
+def menu(stdscr):
     global url
     while True:
-        print("\nMenu:")
-        print("1. Set URL")
-        print("2. Start Bot")
-        print("3. Stop Bot")
-        print("4. View Logs")
-        print("5. Exit")
-        choice = input("Enter your choice: ")
-        if choice == '1':
-            url = input("Enter the video URL: ")
-            print(f"URL set to: {url}")
-        elif choice == '2':
-            start()
-        elif choice == '3':
-            stop()
-        elif choice == '4':
-            view_logs()
-        elif choice == '5':
+        stdscr.clear()
+        stdscr.addstr("Menu:\n")
+        stdscr.addstr("1. Set URL\n")
+        stdscr.addstr("2. Start Bot\n")
+        stdscr.addstr("3. Stop Bot\n")
+        stdscr.addstr("4. View Logs\n")
+        stdscr.addstr("5. Exit\n")
+        stdscr.addstr("Enter your choice: ")
+        stdscr.refresh()
+        choice = stdscr.getch()
+        if choice == ord('1'):
+            stdscr.addstr("Enter the video URL: ")
+            stdscr.refresh()
+            curses.echo()
+            url = stdscr.getstr().decode()
+            curses.noecho()
+            update_display(stdscr, f"URL set to: {url}")
+        elif choice == ord('2'):
+            start(stdscr)
+        elif choice == ord('3'):
+            stop(stdscr)
+        elif choice == ord('4'):
+            view_logs(stdscr)
+        elif choice == ord('5'):
             if running:
-                stop()
+                stop(stdscr)
             break
         else:
-            print("Invalid choice. Please enter a number between 1 and 5.")
+            update_display(stdscr, "Invalid choice. Please enter a number between 1 and 5.")
+        time.sleep(1)
 
-def view_logs():
-    print("\nLogs:")
+def view_logs(stdscr):
+    stdscr.clear()
+    stdscr.addstr("Logs:\n")
     for attempt in attempts:
         timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(attempt[0]))
-        print(f"Time: {timestamp}, Proxy: {attempt[1]}, Status: {attempt[2]}")
+        stdscr.addstr(f"Time: {timestamp}, Proxy: {attempt[1]}, Status: {attempt[2]}\n")
+    stdscr.refresh()
+    stdscr.getch()  # Wait for a key press to return to the menu
+
+def update_display(stdscr, message):
+    stdscr.clear()
+    stdscr.addstr(message + "\n")
+    stdscr.refresh()
+
+def main(stdscr):
+    curses.curs_set(0)  # Hide the cursor
+    menu(stdscr)
 
 if __name__ == "__main__":
-    menu()
+    curses.wrapper(main)
