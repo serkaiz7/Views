@@ -3,7 +3,7 @@ import threading
 import time
 import random
 
-url = 'https://www.example.com'  # Replace with the URL you want to use
+url = 'https://youtube.com/shorts/Qgqaz5B-Zjc?si=B1Fu8M4MLYfdxgQZ'  # Replace with the URL you want to use
 running = False
 
 def run():
