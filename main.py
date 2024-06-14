@@ -16,10 +16,11 @@ def run():
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
             }
-            requests.get(url, proxies={"http": proxy, "https": proxy}, headers=headers, timeout=5)
+            response = requests.get(url, proxies={"http": f"http://{proxy}", "https": f"http://{proxy}"}, headers=headers, timeout=5)
+            print(f"Using proxy {proxy}. Response code: {response.status_code}")
             time.sleep(random.randint(15, 30))
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error with proxy {proxy}: {e}")
             pass
 
 def start():
