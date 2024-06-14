@@ -3,17 +3,21 @@ import threading
 import time
 import random
 import curses
-from bs4 import BeautifulSoup
+from itertools import cycle
 
 url = None
 running = False
 t = None
 attempts = []
 
+# Define the characters to be used in the "Matrix" falling code effect
+falling_chars = cycle("01")
+
 def run(stdscr):
     global running
     stdscr.clear()
     stdscr.nodelay(1)  # Make getch() non-blocking
+
     while running:
         try:
             proxy = get_proxy()
@@ -67,17 +71,17 @@ def menu(stdscr):
     global url
     while True:
         stdscr.clear()
-        stdscr.addstr("Menu:\n")
-        stdscr.addstr("1. Set URL\n")
-        stdscr.addstr("2. Start Bot\n")
-        stdscr.addstr("3. Stop Bot\n")
-        stdscr.addstr("4. View Logs\n")
-        stdscr.addstr("5. Exit\n")
-        stdscr.addstr("Enter your choice: ")
+        stdscr.addstr("Menu:\n", curses.color_pair(2))
+        stdscr.addstr("1. Set URL\n", curses.color_pair(2))
+        stdscr.addstr("2. Start Bot\n", curses.color_pair(2))
+        stdscr.addstr("3. Stop Bot\n", curses.color_pair(2))
+        stdscr.addstr("4. View Logs\n", curses.color_pair(2))
+        stdscr.addstr("5. Exit\n", curses.color_pair(2))
+        stdscr.addstr("Enter your choice: ", curses.color_pair(2))
         stdscr.refresh()
         choice = stdscr.getch()
         if choice == ord('1'):
-            stdscr.addstr("Enter the video URL: ")
+            stdscr.addstr("Enter the video URL: ", curses.color_pair(2))
             stdscr.refresh()
             curses.echo()
             url = stdscr.getstr().decode()
@@ -99,19 +103,34 @@ def menu(stdscr):
 
 def view_logs(stdscr):
     stdscr.clear()
-    stdscr.addstr("Logs:\n")
+    stdscr.addstr("Logs:\n", curses.color_pair(2))
     for attempt in attempts:
         timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(attempt[0]))
-        stdscr.addstr(f"Time: {timestamp}, Proxy: {attempt[1]}, Status: {attempt[2]}\n")
+        stdscr.addstr(f"Time: {timestamp}, Proxy:{attempt[1]}, Status: {attempt[2]}\n", curses.color_pair(2))
     stdscr.refresh()
     stdscr.getch()  # Wait for a key press to return to the menu
 
 def update_display(stdscr, message):
     stdscr.clear()
-    stdscr.addstr(message + "\n")
-    stdscr.refresh()
+    rows, cols = stdscr.getmaxyx()
+
+    # Display the matrix effect
+    columns = [random.randint(0, rows - 2) for _ in range(cols)]
+    for i in range(100):  # Adjust the range for the duration of the effect
+        stdscr.clear()
+        for x in range(cols):
+            stdscr.addstr(columns[x], x, next(falling_chars), curses.color_pair(1))
+            columns[x] = (columns[x] + random.randint(0, 1)) % rows
+        stdscr.addstr(rows - 1, 0, message, curses.color_pair(2))
+        stdscr.refresh()
+        time.sleep(0.1)
 
 def main(stdscr):
+    # Initialize color pairs
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)
+
     curses.curs_set(0)  # Hide the cursor
     menu(stdscr)
 
