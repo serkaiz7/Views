@@ -2,137 +2,96 @@ import requests
 import threading
 import time
 import random
-import curses
-from itertools import cycle
+import os
+import sys
 
-url = None
+url = 'https://www.example.com'  # Replace with the URL you want to use
 running = False
-t = None
-attempts = []
+proxies = []
+current_proxy = ''
+next_proxy = ''
 
-# Define the characters to be used in the "Matrix" falling code effect
-falling_chars = cycle("01")
+def matrix_print(text, delay=0.1):
+    for char in text + '\n':
+        sys.stdout.write(f'\033[32m{char}\033[0m')
+        sys.stdout.flush()
+        time.sleep(delay)
 
-def run(stdscr):
+def get_proxies():
+    global proxies
+    r = requests.get('https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=1000&country=all')
+    proxies = r.content.decode().split('\r\n')
+
+def get_proxy():
+    global current_proxy, next_proxy
+    if not proxies:
+        get_proxies()
+    current_proxy = random.choice(proxies)
+    next_proxy = random.choice(proxies)
+    return current_proxy
+
+def run():
     global running
-    stdscr.clear()
-    stdscr.nodelay(1)  # Make getch() non-blocking
-
     while running:
         try:
             proxy = get_proxy()
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
-            }
-            start_time = time.time()
-            response = requests.get(url, proxies={"http": f"http://{proxy}", "https": f"http://{proxy}"}, headers=headers, timeout=5)
-            status = 'Success' if response.status_code == 200 else 'Failed'
-            end_time = time.time()
-            attempts.append((end_time, proxy, status))
-            update_display(stdscr, f"Using proxy {proxy}. Response code: {response.status_code}")
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"}
+            response = requests.get(url, proxies={"http": proxy, "https": proxy}, headers=headers, timeout=5)
+            os.system('clear')
+            matrix_print(f"Current Proxy: {current_proxy}")
+            matrix_print(f"Next Proxy: {next_proxy}")
+            if response.status_code == 200:
+                matrix_print("Success!")
+            else:
+                matrix_print("Failed!")
             time.sleep(random.randint(15, 30))
         except Exception as e:
-            end_time = time.time()
-            attempts.append((end_time, proxy, f'Error: {e}'))
-            update_display(stdscr, f"Error with proxy {proxy}: {e}")
-            time.sleep(random.randint(15, 30))  # To prevent immediate retry with the same proxy
-            pass
+            matrix_print(f"Error: {e}")
+            time.sleep(5)
 
-def start(stdscr):
+def start():
     global t
     global running
-    if not url:
-        update_display(stdscr, "Error: Please set a video URL first.")
-        return
-    if running:
-        update_display(stdscr, "Bot is already running.")
-        return
-    running = True
-    t = threading.Thread(target=run, args=(stdscr,))
+    t = threading.Thread(target=run)
     t.start()
-    update_display(stdscr, "Bot started.")
+    running = True
 
-def stop(stdscr):
+def stop():
     global running
-    if not running:
-        update_display(stdscr, "Bot is not running.")
-        return
     running = False
     t.join()
-    update_display(stdscr, "Bot stopped.")
 
-def get_proxy():
-    r = requests.get('https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=1000&country=all')
-    proxies = r.content.decode().split('\r\n')
-    proxies = [proxy for proxy in proxies if proxy]  # Remove empty entries
-    return random.choice(proxies)
-
-def menu(stdscr):
-    global url
+def main_menu():
     while True:
-        stdscr.clear()
-        stdscr.addstr("Menu:\n", curses.color_pair(2))
-        stdscr.addstr("1. Set URL\n", curses.color_pair(2))
-        stdscr.addstr("2. Start Bot\n", curses.color_pair(2))
-        stdscr.addstr("3. Stop Bot\n", curses.color_pair(2))
-        stdscr.addstr("4. View Logs\n", curses.color_pair(2))
-        stdscr.addstr("5. Exit\n", curses.color_pair(2))
-        stdscr.addstr("Enter your choice: ", curses.color_pair(2))
-        stdscr.refresh()
-        choice = stdscr.getch()
-        if choice == ord('1'):
-            stdscr.addstr("Enter the video URL: ", curses.color_pair(2))
-            stdscr.refresh()
-            curses.echo()
-            url = stdscr.getstr().decode()
-            curses.noecho()
-            update_display(stdscr, f"URL set to: {url}")
-        elif choice == ord('2'):
-            start(stdscr)
-        elif choice == ord('3'):
-            stop(stdscr)
-        elif choice == ord('4'):
-            view_logs(stdscr)
-        elif choice == ord('5'):
+        os.system('clear')
+        print("Menu:")
+        print("1. Add YouTube URL")
+        print("2. Start")
+        print("3. Stop")
+        print("4. Exit")
+        choice = input("Choose an option: ")
+
+        if choice == '1':
+            global url
+            url = input("Enter YouTube URL: ")
+        elif choice == '2':
+            if not running:
+                start()
+            else:
+                print("Already running!")
+        elif choice == '3':
             if running:
-                stop(stdscr)
+                stop()
+            else:
+                print("Not running!")
+        elif choice == '4':
+            if running:
+                stop()
             break
         else:
-            update_display(stdscr, "Invalid choice. Please enter a number between 1 and 5.")
+            print("Invalid choice!")
         time.sleep(1)
 
-def view_logs(stdscr):
-    stdscr.clear()
-    stdscr.addstr("Logs:\n", curses.color_pair(2))
-    for attempt in attempts:
-        timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(attempt[0]))
-        stdscr.addstr(f"Time: {timestamp}, Proxy:{attempt[1]}, Status: {attempt[2]}\n", curses.color_pair(2))
-    stdscr.refresh()
-    stdscr.getch()  # Wait for a key press to return to the menu
-
-def update_display(stdscr, message):
-    stdscr.clear()
-    rows, cols = stdscr.getmaxyx()
-
-    # Display the matrix effect
-    columns = [random.randint(0, rows - 2) for _ in range(cols)]
-    for i in range(100):  # Adjust the range for the duration of the effect
-        stdscr.clear()
-        for x in range(cols):
-            stdscr.addstr(columns[x], x, next(falling_chars), curses.color_pair(1))
-            columns[x] = (columns[x] + random.randint(0, 1)) % rows
-        stdscr.addstr(rows - 1, 0, message, curses.color_pair(2))
-        stdscr.refresh()
-        time.sleep(0.1)
-
-def main(stdscr):
-    # Initialize color pairs
-    curses.start_color()
-    curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
-    curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)
-
-    curses.curs_set(0)  # Hide the cursor
-    menu(stdscr)
-
 if __name__ == "__main__":
-    curses.wrapper(main)
+    main_menu()
