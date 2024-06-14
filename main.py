@@ -11,7 +11,7 @@ proxies = []
 current_proxy = ''
 next_proxy = ''
 
-def matrix_print(text, delay=0.1):
+def matrix_print(text, delay=0.05):
     for char in text + '\n':
         sys.stdout.write(f'\033[32m{char}\033[0m')
         sys.stdout.flush()
@@ -70,7 +70,7 @@ def main_menu():
         print("2. Start")
         print("3. Stop")
         print("4. Exit")
-        choice = input("Choose an option: ")
+        choice = input("Enter your choice: ")
 
         if choice == '1':
             global url
@@ -78,11 +78,13 @@ def main_menu():
         elif choice == '2':
             if not running:
                 start()
+                print("Started!")
             else:
                 print("Already running!")
         elif choice == '3':
             if running:
                 stop()
+                print("Stopped!")
             else:
                 print("Not running!")
         elif choice == '4':
