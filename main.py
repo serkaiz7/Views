@@ -53,9 +53,9 @@ def run():
 def start():
     global t
     global running
+    running = True
     t = threading.Thread(target=run)
     t.start()
-    running = True
 
 def stop():
     global running
