@@ -3,51 +3,17 @@ import threading
 import time
 import random
 from bs4 import BeautifulSoup
-from flask import Flask, jsonify
-import dash
-import dash_core_components as dcc
-import dash_html_components as html
-from dash.dependencies import Input, Output
-import plotly.graph_objs as go
-import pandas as pd
 
 url = None
 running = False
 t = None
 attempts = []
-proxies_used = []
-
-# Flask server
-app = Flask(__name__)
-
-@app.route('/data')
-def get_data():
-    return jsonify({'attempts': attempts, 'proxies_used': proxies_used})
-
-# Dash app
-dash_app = dash.Dash(__name__, server=app, url_base_pathname='/dashboard/')
-
-dash_app.layout = html.Div(children=[
-    html.H1(children='YouTube View Bot Dashboard'),
-    dcc.Graph(id='attempt-graph'),
-    dcc.Interval(id='interval-component', interval=5*1000, n_intervals=0)
-])
-
-@dash_app.callback(Output('attempt-graph', 'figure'),
-              [Input('interval-component', 'n_intervals')])
-def update_graph(n):
-    df = pd.DataFrame(attempts, columns=['Time', 'Proxy', 'Status'])
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df['Time'], y=df.index, mode='lines+markers', name='Attempts'))
-    fig.update_layout(title='Proxy Attempts', xaxis_title='Time', yaxis_title='Attempts')
-    return fig
 
 def run():
     global running
     while running:
         try:
             proxy = get_proxy()
-            proxies_used.append(proxy)
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
             }
@@ -106,7 +72,8 @@ def menu():
         print("1. Set URL")
         print("2. Start Bot")
         print("3. Stop Bot")
-        print("4. Exit")
+        print("4. View Logs")
+        print("5. Exit")
         choice = input("Enter your choice: ")
         if choice == '1':
             url = input("Enter the video URL: ")
@@ -116,12 +83,19 @@ def menu():
         elif choice == '3':
             stop()
         elif choice == '4':
+            view_logs()
+        elif choice == '5':
             if running:
                 stop()
             break
         else:
-            print("Invalid choice. Please enter a number between 1 and 4.")
+            print("Invalid choice. Please enter a number between 1 and 5.")
+
+def view_logs():
+    print("\nLogs:")
+    for attempt in attempts:
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(attempt[0]))
+        print(f"Time: {timestamp}, Proxy: {attempt[1]}, Status: {attempt[2]}")
 
 if __name__ == "__main__":
-    threading.Thread(target=menu).start()
-    app.run(debug=True, use_reloader=False)
+    menu()
